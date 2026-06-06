@@ -1,0 +1,362 @@
+{
+  "info": {
+    "_postman_id": "b6e6d4d8-8e3f-4fd9-9b74-4bb5f0cf2d61",
+    "name": "IR Services",
+    "description": "Postman collection for the preprocessing, indexing/representation, query refinement, matching/ranking, and evaluation services.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Preprocessing Service",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{preprocessingBaseUrl}}/",
+              "host": [
+                "{{preprocessingBaseUrl}}"
+              ],
+              "path": [
+                ""
+              ]
+            }
+          }
+        },
+        {
+          "name": "Preprocess Text",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Text\": \"The quick brown foxes were jumping over the lazy dogs.\"\n}"
+            },
+            "url": {
+              "raw": "{{preprocessingBaseUrl}}/preprocess",
+              "host": [
+                "{{preprocessingBaseUrl}}"
+              ],
+              "path": [
+                "preprocess"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Indexing and Representation Service",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{indexingBaseUrl}}/",
+              "host": [
+                "{{indexingBaseUrl}}"
+              ],
+              "path": [
+                ""
+              ]
+            }
+          }
+        },
+        {
+          "name": "Index Documents",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Documents\": [\n    {\n      \"Document_Id\": \"1\",\n      \"Processed_Text\": \"quick brown fox jumps\"\n    },\n    {\n      \"Document_Id\": \"2\",\n      \"Processed_Text\": \"brown fox runs fast\"\n    }\n  ],\n  \"Representation_Type\": \"tfidf\",\n  \"K1\": 1.5,\n  \"B\": 0.75,\n  \"Vector_Size\": 64\n}"
+            },
+            "url": {
+              "raw": "{{indexingBaseUrl}}/index",
+              "host": [
+                "{{indexingBaseUrl}}"
+              ],
+              "path": [
+                "index"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Represent Query - TFIDF",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Query\": \"brown fox\",\n  \"Representation_Type\": \"tfidf\"\n}"
+            },
+            "url": {
+              "raw": "{{indexingBaseUrl}}/represent",
+              "host": [
+                "{{indexingBaseUrl}}"
+              ],
+              "path": [
+                "represent"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Represent Query - BM25",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Query\": \"brown fox\",\n  \"Representation_Type\": \"bm25\",\n  \"K1\": 1.8,\n  \"B\": 0.6\n}"
+            },
+            "url": {
+              "raw": "{{indexingBaseUrl}}/represent",
+              "host": [
+                "{{indexingBaseUrl}}"
+              ],
+              "path": [
+                "represent"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Represent Query - Embeddings",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Query\": \"brown fox\",\n  \"Representation_Type\": \"embeddings\",\n  \"Vector_Size\": 64\n}"
+            },
+            "url": {
+              "raw": "{{indexingBaseUrl}}/represent",
+              "host": [
+                "{{indexingBaseUrl}}"
+              ],
+              "path": [
+                "represent"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Refine Query",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Query\": \"quik brwn fox jumpd\"\n}"
+            },
+            "url": {
+              "raw": "{{indexingBaseUrl}}/refine",
+              "host": [
+                "{{indexingBaseUrl}}"
+              ],
+              "path": [
+                "refine"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Matching and Ranking Service",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{matchingRankingBaseUrl}}/",
+              "host": [
+                "{{matchingRankingBaseUrl}}"
+              ],
+              "path": [
+                ""
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Documents - Hybrid Parallel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Representation_Type\": \"hybrid_parallel\",\n  \"Query_Representation\": {\n    \"BM25_Vector\": {\n      \"brown\": 1.2,\n      \"fox\": 0.8\n    },\n    \"Embedding_Vector\": [0.2, 0.8, 0.1, 0.0]\n  },\n  \"Dataset\": [\n    {\n      \"Document_Id\": \"1\",\n      \"BM25_Vector\": {\n        \"brown\": 1.0,\n        \"fox\": 0.7\n      },\n      \"Embedding_Vector\": [0.2, 0.8, 0.1, 0.0]\n    },\n    {\n      \"Document_Id\": \"2\",\n      \"BM25_Vector\": {\n        \"brown\": 0.3,\n        \"fox\": 0.2\n      },\n      \"Embedding_Vector\": [0.0, 0.1, 0.9, 0.1]\n    }\n  ],\n  \"Top_K\": 2,\n  \"Candidate_K\": 2\n}"
+            },
+            "url": {
+              "raw": "{{matchingRankingBaseUrl}}/search",
+              "host": [
+                "{{matchingRankingBaseUrl}}"
+              ],
+              "path": [
+                "search"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Documents - Hybrid Serial",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Representation_Type\": \"hybrid_serial\",\n  \"Query_Representation\": {\n    \"BM25_Vector\": {\n      \"brown\": 1.2,\n      \"fox\": 0.8\n    },\n    \"Embedding_Vector\": [0.2, 0.8, 0.1, 0.0]\n  },\n  \"Dataset\": [\n    {\n      \"Document_Id\": \"1\",\n      \"BM25_Vector\": {\n        \"brown\": 1.0,\n        \"fox\": 0.7\n      },\n      \"Embedding_Vector\": [0.2, 0.8, 0.1, 0.0]\n    },\n    {\n      \"Document_Id\": \"2\",\n      \"BM25_Vector\": {\n        \"brown\": 0.3,\n        \"fox\": 0.2\n      },\n      \"Embedding_Vector\": [0.0, 0.1, 0.9, 0.1]\n    }\n  ],\n  \"Top_K\": 2,\n  \"Candidate_K\": 1\n}"
+            },
+            "url": {
+              "raw": "{{matchingRankingBaseUrl}}/search",
+              "host": [
+                "{{matchingRankingBaseUrl}}"
+              ],
+              "path": [
+                "search"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Documents - TFIDF",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Representation_Type\": \"tfidf\",\n  \"Query_Representation\": {\n    \"TFIDF_Vector\": {\n      \"brown\": 0.8,\n      \"fox\": 0.6\n    }\n  },\n  \"Dataset\": [\n    {\n      \"Document_Id\": \"1\",\n      \"TFIDF_Vector\": {\n        \"brown\": 0.7,\n        \"fox\": 0.5\n      }\n    },\n    {\n      \"Document_Id\": \"2\",\n      \"TFIDF_Vector\": {\n        \"brown\": 0.1,\n        \"fox\": 0.2\n      }\n    }\n  ],\n  \"Top_K\": 2,\n  \"Candidate_K\": 2\n}"
+            },
+            "url": {
+              "raw": "{{matchingRankingBaseUrl}}/search",
+              "host": [
+                "{{matchingRankingBaseUrl}}"
+              ],
+              "path": [
+                "search"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Evaluation Service",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{evaluationBaseUrl}}/",
+              "host": [
+                "{{evaluationBaseUrl}}"
+              ],
+              "path": [
+                ""
+              ]
+            }
+          }
+        },
+        {
+          "name": "Evaluate Models",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Qrels\": [\n    {\n      \"Query_Id\": \"Q1\",\n      \"Relevant_Documents\": [\n        {\n          \"Document_Id\": \"D1\",\n          \"Relevance\": 3\n        },\n        {\n          \"Document_Id\": \"D2\",\n          \"Relevance\": 2\n        },\n        {\n          \"Document_Id\": \"D5\",\n          \"Relevance\": 1\n        }\n      ]\n    },\n    {\n      \"Query_Id\": \"Q2\",\n      \"Relevant_Documents\": [\n        {\n          \"Document_Id\": \"D3\",\n          \"Relevance\": 2\n        }\n      ]\n    }\n  ],\n  \"System_Results\": [\n    {\n      \"Model_Name\": \"TF-IDF\",\n      \"Query_Id\": \"Q1\",\n      \"Ranked_Document_Ids\": [\"D2\", \"D1\", \"D4\", \"D5\"]\n    },\n    {\n      \"Model_Name\": \"TF-IDF\",\n      \"Query_Id\": \"Q2\",\n      \"Ranked_Document_Ids\": [\"D3\", \"D4\", \"D1\"]\n    },\n    {\n      \"Model_Name\": \"BM25\",\n      \"Query_Id\": \"Q1\",\n      \"Ranked_Document_Ids\": [\"D1\", \"D2\", \"D5\", \"D4\"]\n    },\n    {\n      \"Model_Name\": \"BM25\",\n      \"Query_Id\": \"Q2\",\n      \"Ranked_Document_Ids\": [\"D4\", \"D3\", \"D1\"]\n    },\n    {\n      \"Model_Name\": \"Embeddings\",\n      \"Query_Id\": \"Q1\",\n      \"Ranked_Document_Ids\": [\"D5\", \"D1\", \"D2\"]\n    },\n    {\n      \"Model_Name\": \"Embeddings\",\n      \"Query_Id\": \"Q2\",\n      \"Ranked_Document_Ids\": [\"D3\", \"D2\", \"D4\"]\n    },\n    {\n      \"Model_Name\": \"Hybrid\",\n      \"Query_Id\": \"Q1\",\n      \"Ranked_Document_Ids\": [\"D1\", \"D5\", \"D2\", \"D4\"]\n    },\n    {\n      \"Model_Name\": \"Hybrid\",\n      \"Query_Id\": \"Q2\",\n      \"Ranked_Document_Ids\": [\"D3\", \"D1\", \"D4\"]\n    }\n  ],\n  \"Cutoff\": 10\n}"
+            },
+            "url": {
+              "raw": "{{evaluationBaseUrl}}/evaluate",
+              "host": [
+                "{{evaluationBaseUrl}}"
+              ],
+              "path": [
+                "evaluate"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "preprocessingBaseUrl",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "indexingBaseUrl",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "matchingRankingBaseUrl",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "evaluationBaseUrl",
+      "value": "http://127.0.0.1:8000"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+nltk
+gensim
+pyspellchecker
+streamlit
+requests
+ir-datasets
