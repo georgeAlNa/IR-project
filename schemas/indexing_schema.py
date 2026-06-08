@@ -11,6 +11,7 @@ class IndexedDocument(BaseModel):
 
     document_id: str = Field(..., alias="Document_Id", min_length=1)
     processed_text: str = Field(..., alias="Processed_Text", min_length=1)
+    original_text: str | None = Field(default=None, alias="Original_Text")
 
 
 class IndexRequest(BaseModel):

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 from collections import defaultdict
 from dataclasses import dataclass
 from itertools import islice
@@ -37,6 +38,55 @@ DATASET_CONFIGS = {
 }
 
 
+def _patch_ir_datasets_tsv_encoding() -> None:
+    from ir_datasets.formats import tsv
+
+    if getattr(tsv.FileLineIter, "_ir_project_utf8_patched", False):
+        return
+
+    def __next__(self):
+        if self.stop is not None and self.start >= self.stop:
+            self.ctxt.close()
+            raise StopIteration
+        if self.stream is None:
+            if isinstance(self.dlc, list):
+                self.stream = io.TextIOWrapper(
+                    self.ctxt.enter_context(self.dlc[self.stream_idx].stream()),
+                    encoding="utf-8",
+                    errors="replace",
+                )
+            else:
+                self.stream = io.TextIOWrapper(
+                    self.ctxt.enter_context(self.dlc.stream()),
+                    encoding="utf-8",
+                    errors="replace",
+                )
+        line = ""
+        while self.pos < self.start:
+            line = self.stream.readline()
+            if line != "\n":
+                self.pos += 1
+        if line == "":
+            if isinstance(self.dlc, list):
+                self.stream_idx += 1
+                if self.stream_idx < len(self.dlc):
+                    self.stream = io.TextIOWrapper(
+                        self.ctxt.enter_context(self.dlc[self.stream_idx].stream()),
+                        encoding="utf-8",
+                        errors="replace",
+                    )
+                    line = self.stream.readline()
+                else:
+                    raise StopIteration()
+            else:
+                raise StopIteration()
+        self.start += self.step
+        return line
+
+    tsv.FileLineIter.__next__ = __next__
+    tsv.FileLineIter._ir_project_utf8_patched = True
+
+
 def validate_dataset_name(dataset_name: str) -> str:
     normalized = dataset_name.strip()
     if normalized not in SUPPORTED_DATASETS:
@@ -66,6 +116,8 @@ def _extract_document_text(document: object) -> str:
 
 
 def load_documents(dataset_name: str, limit: int = DEFAULT_DOCUMENT_LIMIT) -> list[LoadedDocument]:
+    _patch_ir_datasets_tsv_encoding()
+
     config = _dataset_config(dataset_name)
     if limit <= 0:
         raise ValueError("Document limit must be greater than 0.")
@@ -87,6 +139,8 @@ def load_documents(dataset_name: str, limit: int = DEFAULT_DOCUMENT_LIMIT) -> li
 
 
 def load_queries_and_qrels(dataset_name: str, max_queries: int | None = None) -> tuple[dict[str, str], list[QrelQuery]]:
+    _patch_ir_datasets_tsv_encoding()
+
     config = _dataset_config(dataset_name)
     dataset = ir_datasets.load(config.evaluation_dataset_name)
 

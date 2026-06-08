@@ -17,6 +17,7 @@ class IndexedDocumentEntity:
     document_id: str
     processed_text: str
     tokens: tuple[str, ...]
+    original_text: str | None = None
 
 
 @dataclass(frozen=True)

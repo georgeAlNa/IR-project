@@ -12,6 +12,8 @@ class RankedDocument(BaseModel):
     model_config = ConfigDict(populate_by_name=True, str_strip_whitespace=True)
 
     document_id: str = Field(..., alias="Document_Id", min_length=1)
+    processed_text: str | None = Field(default=None, alias="Processed_Text")
+    original_text: str | None = Field(default=None, alias="Original_Text")
     tfidf_vector: dict[str, float] | None = Field(default=None, alias="TFIDF_Vector")
     bm25_vector: dict[str, float] | None = Field(default=None, alias="BM25_Vector")
     embedding_vector: list[float] | None = Field(default=None, alias="Embedding_Vector")
@@ -40,3 +42,4 @@ class SearchResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     ranked_document_ids: list[str] = Field(..., alias="Ranked_Document_Ids")
+    ranked_documents: list[RankedDocument] = Field(default_factory=list, alias="Ranked_Documents")

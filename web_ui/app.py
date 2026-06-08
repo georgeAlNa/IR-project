@@ -109,6 +109,10 @@ if search_submitted:
             st.stop()
 
         ranked_ids = ranking_result.get("Ranked_Document_Ids", [])
+        ranked_documents = ranking_result.get("Ranked_Documents") or [
+            {"Document_Id": document_id, "Processed_Text": ""}
+            for document_id in ranked_ids
+        ]
 
         st.session_state["last_search"] = {
             "dataset_name": sidebar_state.dataset_name,
@@ -119,7 +123,7 @@ if search_submitted:
             "processed_query": processed_query,
             "indexing_result": indexing_result,
             "ranking_result": ranking_result,
-            "ranked_documents": [{"Document_Id": document_id, "Processed_Text": ""} for document_id in ranked_ids],
+            "ranked_documents": ranked_documents,
             "prepared_documents": [],
             "query_vectors": query_vectors_result,
             "representation": selected_representation,
@@ -135,6 +139,7 @@ if search_submitted:
         processed_documents.append(
             {
                 "Document_Id": document.document_id,
+                "Original_Text": document.text,
                 "Processed_Text": processed_document_result.get("Processed_Text", document.text),
             }
         )
@@ -205,7 +210,13 @@ if last_search:
         ranked_documents = last_search.get("ranked_documents", [])
         if ranked_documents:
             for position, document in enumerate(ranked_documents, start=1):
-                st.write(f"#{position} - {document['Document_Id']}")
+                with st.container():
+                    st.write(f"#{position} - {document['Document_Id']}")
+                    document_text = document.get("Original_Text") or document.get("Processed_Text")
+                    if document_text:
+                        st.write(document_text)
+                    else:
+                        st.caption("Document text is not available in this response.")
         else:
             st.info("No documents were returned for the current search.")
     else:
@@ -214,7 +225,7 @@ if last_search:
             for position, document in enumerate(last_search["ranked_documents"], start=1):
                 with st.container():
                     st.write(f"#{position} - {document['Document_Id']}")
-                    st.write(document["Processed_Text"])
+                    st.write(document.get("Original_Text") or document["Processed_Text"])
         else:
             st.info("No documents were returned for the current search.")
 

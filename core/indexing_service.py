@@ -4,6 +4,7 @@ import threading
 import math
 from collections import Counter
 from dataclasses import dataclass
+from collections.abc import Sequence
 from typing import Any
 
 from core.data_loader import DEFAULT_DOCUMENT_LIMIT, load_documents
@@ -43,7 +44,7 @@ class IndexingService:
 
     def index_documents(
         self,
-        documents: list[tuple[str, str]],
+        documents: Sequence[tuple[str, str] | tuple[str, str, str | None]],
         representation_type: RepresentationType = "tfidf",
         k1: float = 1.5,
         b: float = 0.75,
@@ -54,14 +55,19 @@ class IndexingService:
             if not documents:
                 raise RuntimeError("No documents were provided for indexing.")
 
-            indexed_documents = [
-                IndexedDocumentEntity(
-                    document_id=document_id,
-                    processed_text=processed_text,
-                    tokens=tuple(normalize_text(processed_text)),
+            indexed_documents: list[IndexedDocumentEntity] = []
+            for document in documents:
+                document_id = document[0]
+                processed_text = document[1]
+                original_text = document[2] if len(document) > 2 else None
+                indexed_documents.append(
+                    IndexedDocumentEntity(
+                        document_id=document_id,
+                        processed_text=processed_text,
+                        tokens=tuple(normalize_text(processed_text)),
+                        original_text=original_text,
+                    )
                 )
-                for document_id, processed_text in documents
-            ]
 
             self._documents = indexed_documents
             self._index = self._builder.build(indexed_documents)
@@ -100,11 +106,11 @@ class IndexingService:
     ) -> IndexingResult:
         raw_documents = load_documents(dataset_name=dataset_name, limit=max_documents)
 
-        processed_documents: list[tuple[str, str]] = []
+        processed_documents: list[tuple[str, str, str]] = []
         for document in raw_documents:
             processed_text = self._preprocessing_pipeline.process(document.text)
             if processed_text.strip():
-                processed_documents.append((document.document_id, processed_text))
+                processed_documents.append((document.document_id, processed_text, document.text))
 
         if not processed_documents:
             raise RuntimeError(f"No non-empty documents available after preprocessing for dataset '{dataset_name}'.")
@@ -172,6 +178,8 @@ class IndexingService:
             ranked_documents.append(
                 RankedDocument(
                     document_id=document.document_id,
+                    processed_text=document.processed_text,
+                    original_text=document.original_text,
                     tfidf_vector=self._build_tfidf_document_vector(document.tokens, index),
                     bm25_vector=self._build_bm25_document_vector(document.tokens, index, k1, b),
                     embedding_vector=embedding_vector,

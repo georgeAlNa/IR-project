@@ -267,6 +267,7 @@ def prepare_dataset_vectors(documents: list[dict[str, Any]], k1: float, b: float
         prepared_documents.append(
             {
                 "Document_Id": document["Document_Id"],
+                "Original_Text": document.get("Original_Text"),
                 "TFIDF_Vector": _build_tfidf_vector(tokens, document_frequencies, document_count),
                 "BM25_Vector": _build_bm25_vector(tokens, document_frequencies, document_count, average_length, k1, b),
                 "Embedding_Vector": _aggregate_embeddings(tokens, vector_size),

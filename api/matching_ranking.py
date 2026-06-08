@@ -35,4 +35,14 @@ def search_documents(
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    return SearchResponse(ranked_document_ids=result.ranked_document_ids)
+    document_lookup = {document.document_id: document for document in dataset}
+    ranked_documents = [
+        document_lookup[document_id]
+        for document_id in result.ranked_document_ids
+        if document_id in document_lookup
+    ]
+
+    return SearchResponse(
+        ranked_document_ids=result.ranked_document_ids,
+        ranked_documents=ranked_documents,
+    )

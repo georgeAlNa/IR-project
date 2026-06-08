@@ -34,7 +34,10 @@ def index_documents(
             if not payload.documents:
                 raise RuntimeError("Provide Documents in the payload or pass dataset_name as query parameter.")
             result = service.index_documents(
-                documents=[(document.document_id, document.processed_text) for document in payload.documents],
+                documents=[
+                    (document.document_id, document.processed_text, document.original_text)
+                    for document in payload.documents
+                ],
                 representation_type=payload.representation_type,
                 k1=payload.k1,
                 b=payload.b,
