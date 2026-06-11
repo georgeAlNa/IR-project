@@ -124,7 +124,7 @@ def index_documents(
         params["dataset_name"] = dataset_name
     if max_documents is not None:
         params["max_documents"] = max_documents
-    return _request_json("POST", f"{base_url.rstrip('/')}/index", payload, params=params or None, timeout=300)
+    return _request_json("POST", f"{base_url.rstrip('/')}/index", payload, params=params or None, timeout=3600)
 
 
 def represent_query(base_url: str, query: str, representation_type: str, k1: float | None = None, b: float | None = None, vector_size: int = _DEFAULT_VECTOR_SIZE) -> dict[str, Any]:
