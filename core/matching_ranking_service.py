@@ -110,7 +110,7 @@ class MatchingRankingService:
             if representation_type in ("tfidf", "bm25", "embeddings"):
                 scored_documents = [
                     RankedDocumentScore(
-                        document_id=document.document_id,
+                        document_id=str(document.document_id),
                         score=self._score_document(representation_type, query_representation, document),
                     )
                     for document in dataset
@@ -119,11 +119,11 @@ class MatchingRankingService:
                 return SearchResult(ranked_document_ids=[item.document_id for item in ranked_documents[:top_k]])
 
             bm25_scores = [
-                RankedDocumentScore(document_id=document.document_id, score=self._score_bm25(query_representation, document))
+                RankedDocumentScore(document_id=str(document.document_id), score=self._score_bm25(query_representation, document))
                 for document in dataset
             ]
             embedding_scores = [
-                RankedDocumentScore(document_id=document.document_id, score=self._score_embeddings(query_representation, document))
+                RankedDocumentScore(document_id=str(document.document_id), score=self._score_embeddings(query_representation, document))
                 for document in dataset
             ]
 

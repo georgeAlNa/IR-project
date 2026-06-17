@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-SearchRepresentationType = Literal["tfidf", "bm25", "embeddings", "hybrid_parallel", "hybrid_serial"]
+SearchRepresentationType = Literal["tfidf", "bm25", "embeddings", "hybrid_parallel", "hybrid_serial", "bert"]
 
 
 class RankedDocument(BaseModel):
@@ -36,6 +36,7 @@ class SearchRequest(BaseModel):
     dataset_name: str | None = Field(default=None, alias="Dataset_Name", min_length=1)
     top_k: int = Field(10, alias="Top_K", ge=1)
     candidate_k: int = Field(20, alias="Candidate_K", ge=1)
+    query_text: str | None = Field(default=None, alias="query_text")
 
 
 class SearchResponse(BaseModel):

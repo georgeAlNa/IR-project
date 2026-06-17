@@ -18,6 +18,7 @@ class SidebarState:
     top_k: int
     candidate_k: int
     vector_size: int
+    enable_query_refinement: bool
 
 
 def render_sidebar() -> SidebarState:
@@ -38,13 +39,16 @@ def render_sidebar() -> SidebarState:
         )
     representation_model = st.sidebar.selectbox(
         "Representation Model",
-        options=["TF-IDF", "BM25", "Embedding", "Hybrid Serial", "Hybrid Parallel"],
+        options=["TF-IDF", "BM25", "Embedding", "Hybrid Serial", "Hybrid Parallel", "BERT (FAISS)"],
     )
     k1 = st.sidebar.slider("BM25 k1", min_value=0.1, max_value=3.0, value=1.5, step=0.1)
     b = st.sidebar.slider("BM25 b", min_value=0.0, max_value=1.0, value=0.75, step=0.01)
     top_k = st.sidebar.slider("Top-K results", min_value=1, max_value=20, value=10, step=1)
     candidate_k = st.sidebar.slider("Hybrid candidate pool", min_value=1, max_value=50, value=20, step=1)
     vector_size = st.sidebar.slider("Embedding vector size", min_value=8, max_value=128, value=64, step=8)
+    
+    st.sidebar.header("Features")
+    enable_query_refinement = st.sidebar.checkbox("Enable Query Refinement", value=True)
 
     return SidebarState(
         base_url=base_url,
@@ -56,4 +60,5 @@ def render_sidebar() -> SidebarState:
         top_k=top_k,
         candidate_k=candidate_k,
         vector_size=vector_size,
+        enable_query_refinement=enable_query_refinement,
     )

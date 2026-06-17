@@ -37,3 +37,9 @@ dist/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Data and Indexes
+offline_indexes/
+*.faiss
+*.joblib
+*.index

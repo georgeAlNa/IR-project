@@ -6,3 +6,6 @@ pyspellchecker
 streamlit
 requests
 ir-datasets
+joblib
+sentence-transformers
+faiss-cpu

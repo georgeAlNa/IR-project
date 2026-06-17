@@ -24,6 +24,7 @@ MODEL_TO_REPRESENTATION = {
     "Embedding": "embeddings",
     "Hybrid Serial": "hybrid_serial",
     "Hybrid Parallel": "hybrid_parallel",
+    "BERT (FAISS)": "bert",
 }
 
 HYBRID_EVALUATION_REPRESENTATION = "hybrid_parallel"
@@ -55,12 +56,14 @@ if search_submitted:
     selected_representation = MODEL_TO_REPRESENTATION[sidebar_state.representation_model]
     indexing_representation = selected_representation if selected_representation in {"tfidf", "bm25", "embeddings"} else "tfidf"
 
-    refined_query_result, error = _safe_request("Query refinement", refine_query, sidebar_state.base_url, search_query)
-    if error:
-        st.error(error)
-        st.stop()
-
-    refined_query = refined_query_result.get("Corrected_Query", search_query)
+    if sidebar_state.enable_query_refinement:
+        refined_query_result, error = _safe_request("Query refinement", refine_query, sidebar_state.base_url, search_query)
+        if error:
+            st.error(error)
+            st.stop()
+        refined_query = refined_query_result.get("Corrected_Query", search_query)
+    else:
+        refined_query = search_query
     preprocessed_query_result, error = _safe_request("Query preprocessing", preprocess_text, sidebar_state.base_url, refined_query)
     if error:
         st.error(error)
@@ -85,14 +88,20 @@ if search_submitted:
             st.error(error)
             st.stop()
 
-        query_vectors_result = build_query_vectors(
-            sidebar_state.base_url,
-            processed_query,
-            sidebar_state.k1,
-            sidebar_state.b,
-            sidebar_state.vector_size,
-        )
-        search_payload = build_search_payload(selected_representation, query_vectors_result)
+        if selected_representation == "bert":
+            query_vectors_result = {}
+            search_payload = {}
+        else:
+            query_vectors_result = build_query_vectors(
+                sidebar_state.base_url,
+                processed_query,
+                sidebar_state.k1,
+                sidebar_state.b,
+                sidebar_state.vector_size,
+                dataset.ir_dataset_name,
+            )
+            search_payload = build_search_payload(selected_representation, query_vectors_result)
+            
         ranking_result, error = _safe_request(
             "Dataset ranking",
             search_documents,
@@ -103,6 +112,7 @@ if search_submitted:
             sidebar_state.top_k,
             sidebar_state.candidate_k,
             dataset.ir_dataset_name,
+            search_query,
         )
         if error:
             st.error(error)
@@ -158,15 +168,20 @@ if search_submitted:
         st.error(error)
         st.stop()
 
-    query_vectors_result = build_query_vectors(
-        sidebar_state.base_url,
-        processed_query,
-        sidebar_state.k1,
-        sidebar_state.b,
-        sidebar_state.vector_size,
-    )
+    if selected_representation == "bert":
+        query_vectors_result = {}
+        search_payload = {}
+    else:
+        query_vectors_result = build_query_vectors(
+            sidebar_state.base_url,
+            processed_query,
+            sidebar_state.k1,
+            sidebar_state.b,
+            sidebar_state.vector_size,
+        )
+        search_payload = build_search_payload(selected_representation, query_vectors_result)
+
     prepared_documents = prepare_dataset_vectors(processed_documents, sidebar_state.k1, sidebar_state.b, sidebar_state.vector_size)
-    search_payload = build_search_payload(selected_representation, query_vectors_result)
 
     ranking_result, error = _safe_request(
         "Ranking",
@@ -177,6 +192,8 @@ if search_submitted:
         prepared_documents,
         sidebar_state.top_k,
         sidebar_state.candidate_k,
+        None,
+        search_query,
     )
     if error:
         st.error(error)
@@ -236,8 +253,10 @@ if last_search:
         with st.expander("Ranking Response"):
             st.json(last_search["ranking_result"])
 
+    force_recalculate = st.checkbox("Force Recalculate (Takes time)", value=False)
+    
     if last_search.get("ir_dataset_name"):
-        if st.button("Run Evaluation Service"):
+        if st.button("Run Evaluation Service", key="btn_eval_dataset"):
             evaluation_result, error = _safe_request(
                 "Evaluation service",
                 evaluate_models,
@@ -247,6 +266,7 @@ if last_search:
                 10,
                 last_search["ir_dataset_name"],
                 10,
+                force_recalculate,
             )
             if error:
                 st.error(error)
@@ -254,7 +274,20 @@ if last_search:
 
             st.subheader("Evaluation Metrics")
             st.json(evaluation_result)
-    elif st.button("Run Evaluation Service"):
+            
+            metrics_data = evaluation_result.get("Metrics_By_Model", {})
+            if metrics_data:
+                import pandas as pd
+                chart_data = []
+                for model, metrics in metrics_data.items():
+                    chart_data.append({
+                        "Model": model,
+                        "MAP": metrics.get("MAP", 0.0),
+                        "nDCG": metrics.get("nDCG", 0.0)
+                    })
+                df = pd.DataFrame(chart_data).set_index("Model")
+                st.bar_chart(df[["MAP", "nDCG"]], use_container_width=True)
+    elif st.button("Run Evaluation Service", key="btn_eval_custom"):
         model_runs: dict[str, list[str]] = {}
         evaluation_models = ["TF-IDF", "BM25", "Embedding", "Hybrid"]
 
@@ -298,3 +331,16 @@ if last_search:
 
         st.subheader("Evaluation Metrics")
         st.json(evaluation_result)
+        
+        metrics_data = evaluation_result.get("Metrics_By_Model", {})
+        if metrics_data:
+            import pandas as pd
+            chart_data = []
+            for model, metrics in metrics_data.items():
+                chart_data.append({
+                    "Model": model,
+                    "MAP": metrics.get("MAP", 0.0),
+                    "nDCG": metrics.get("nDCG", 0.0)
+                })
+            df = pd.DataFrame(chart_data).set_index("Model")
+            st.bar_chart(df[["MAP", "nDCG"]], use_container_width=True)

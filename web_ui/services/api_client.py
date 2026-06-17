@@ -32,30 +32,6 @@ class DatasetDefinition:
 
 def get_dataset_catalog() -> dict[str, DatasetDefinition]:
     return {
-        "News Retrieval Demo": DatasetDefinition(
-            name="News Retrieval Demo",
-            query_id="Q1",
-            benchmark_query="brown fox search",
-            documents=(
-                DatasetDocument("D1", "Brown fox jumps over the lazy dog in the park"),
-                DatasetDocument("D2", "A quick brown fox outruns the hounds"),
-                DatasetDocument("D3", "City news covers local sports and weather"),
-                DatasetDocument("D4", "Dogs and foxes appear in wildlife reports"),
-            ),
-            qrels={"D1": 3, "D2": 2, "D4": 1},
-        ),
-        "IR Research Demo": DatasetDefinition(
-            name="IR Research Demo",
-            query_id="Q2",
-            benchmark_query="fastapi microservice evaluation",
-            documents=(
-                DatasetDocument("D1", "FastAPI microservices expose search and evaluation endpoints"),
-                DatasetDocument("D2", "Streamlit creates a simple web interface for retrieval demos"),
-                DatasetDocument("D3", "BM25 and embeddings can be combined in hybrid ranking"),
-                DatasetDocument("D4", "This document discusses preprocessing and query refinement"),
-            ),
-            qrels={"D1": 3, "D3": 2, "D4": 1},
-        ),
         "MS MARCO Passage": DatasetDefinition(
             name="MS MARCO Passage",
             query_id="",
@@ -63,14 +39,6 @@ def get_dataset_catalog() -> dict[str, DatasetDefinition]:
             documents=(),
             qrels={},
             ir_dataset_name="msmarco-passage",
-        ),
-        "BEIR Quora": DatasetDefinition(
-            name="BEIR Quora",
-            query_id="",
-            benchmark_query="how can i improve search results",
-            documents=(),
-            qrels={},
-            ir_dataset_name="beir/quora",
         ),
     }
 
@@ -127,7 +95,7 @@ def index_documents(
     return _request_json("POST", f"{base_url.rstrip('/')}/index", payload, params=params or None, timeout=3600)
 
 
-def represent_query(base_url: str, query: str, representation_type: str, k1: float | None = None, b: float | None = None, vector_size: int = _DEFAULT_VECTOR_SIZE) -> dict[str, Any]:
+def represent_query(base_url: str, query: str, representation_type: str, k1: float | None = None, b: float | None = None, vector_size: int = _DEFAULT_VECTOR_SIZE, dataset_name: str | None = None) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "Query": query,
         "Representation_Type": representation_type,
@@ -137,7 +105,10 @@ def represent_query(base_url: str, query: str, representation_type: str, k1: flo
         payload["B"] = b if b is not None else 0.75
     if representation_type == "embeddings":
         payload["Vector_Size"] = vector_size
-    return _request_json("POST", f"{base_url.rstrip('/')}/represent", payload)
+    params: dict[str, Any] = {}
+    if dataset_name:
+        params["dataset_name"] = dataset_name
+    return _request_json("POST", f"{base_url.rstrip('/')}/represent", payload, params=params or None)
 
 
 def search_documents(
@@ -148,18 +119,25 @@ def search_documents(
     top_k: int,
     candidate_k: int,
     dataset_name: str | None = None,
+    query_text: str | None = None,
 ) -> dict[str, Any]:
-    payload = {
+    payload: dict[str, Any] = {
         "Representation_Type": representation_type,
         "Query_Representation": query_representation,
         "Top_K": top_k,
         "Candidate_K": candidate_k,
     }
+
     if dataset_name:
         payload["Dataset_Name"] = dataset_name
     else:
         payload["Dataset"] = dataset or []
-    return _request_json("POST", f"{base_url.rstrip('/')}/search", payload, timeout=120)
+        
+    params = {}
+    if representation_type == "bert" and query_text is not None:
+        params["query_text"] = query_text
+
+    return _request_json("POST", f"{base_url.rstrip('/')}/search", payload, params=params or None, timeout=120)
 
 
 def evaluate_models(
@@ -169,6 +147,7 @@ def evaluate_models(
     cutoff: int = 10,
     dataset_name: str | None = None,
     max_queries: int | None = None,
+    force_recalculate: bool = False,
 ) -> dict[str, Any]:
     payload = {
         "Qrels": qrels,
@@ -180,7 +159,9 @@ def evaluate_models(
         params["dataset_name"] = dataset_name
     if max_queries is not None:
         params["max_queries"] = max_queries
-    return _request_json("POST", f"{base_url.rstrip('/')}/evaluate", payload, params=params or None, timeout=120)
+    if force_recalculate:
+        params["force_recalculate"] = "true"
+    return _request_json("POST", f"{base_url.rstrip('/')}/evaluate", payload, params=params or None, timeout=600)
 
 
 def _hash_vector(token: str, vector_size: int) -> list[float]:
@@ -278,10 +259,10 @@ def prepare_dataset_vectors(documents: list[dict[str, Any]], k1: float, b: float
     return prepared_documents
 
 
-def build_query_vectors(base_url: str, query: str, k1: float, b: float, vector_size: int) -> dict[str, Any]:
-    tfidf = represent_query(base_url, query, "tfidf")
-    bm25 = represent_query(base_url, query, "bm25", k1=k1, b=b)
-    embeddings = represent_query(base_url, query, "embeddings", vector_size=vector_size)
+def build_query_vectors(base_url: str, query: str, k1: float, b: float, vector_size: int, dataset_name: str | None = None) -> dict[str, Any]:
+    tfidf = represent_query(base_url, query, "tfidf", dataset_name=dataset_name)
+    bm25 = represent_query(base_url, query, "bm25", k1=k1, b=b, dataset_name=dataset_name)
+    embeddings = represent_query(base_url, query, "embeddings", vector_size=vector_size, dataset_name=dataset_name)
     return {
         "TFIDF_Vector": tfidf.get("Vector", {}),
         "BM25_Vector": bm25.get("Vector", {}),

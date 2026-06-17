@@ -1,10 +1,122 @@
 import argparse
+import logging
 import subprocess
 import sys
 import time
+from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
+
+from core.offline_store import OfflineDatasetBundle, register_bundle
+
+log = logging.getLogger(__name__)
+
+INDEX_DIR = Path(__file__).resolve().parent / "offline_indexes"
+
+
+def _safe_dataset_name(key: str) -> str:
+    """Convert directory key back to dataset name, e.g. 'beir_quora' → 'beir/quora'."""
+    known = {"msmarco-passage": "msmarco-passage", "beir_quora": "beir/quora"}
+    return known.get(key, key)
+
+
+def _load_offline_bundles() -> None:
+    """Scan INDEX_DIR for pre-built dataset bundles and load them into memory."""
+    if not INDEX_DIR.exists():
+        log.warning(
+            "offline_indexes/ directory not found. "
+            "Dynamic /index endpoint still works, but offline datasets are unavailable. "
+            "Run: python scripts/build_offline_indexes.py"
+        )
+        return
+
+    try:
+        import joblib
+    except ImportError:
+        log.error("joblib is not installed — offline indexes cannot be loaded.")
+        return
+
+    for dataset_dir in sorted(INDEX_DIR.iterdir()):
+        if not dataset_dir.is_dir():
+            continue
+
+        index_path = dataset_dir / "inverted_index.joblib"
+        strategies_path = dataset_dir / "representation_strategies.joblib"
+        ranked_docs_path = dataset_dir / "ranked_documents.joblib"
+
+        if not (index_path.exists() and strategies_path.exists() and ranked_docs_path.exists()):
+            log.warning("Skipping '%s' — missing core joblib files.", dataset_dir.name)
+            continue
+
+        dataset_name = _safe_dataset_name(dataset_dir.name)
+        log.info("Loading offline index for '%s' …", dataset_name)
+        t0 = time.perf_counter()
+
+        inverted_index = joblib.load(index_path)
+        strategies = joblib.load(strategies_path)
+        ranked_documents = joblib.load(ranked_docs_path)
+
+        # Optional BERT + FAISS
+        faiss_index = None
+        faiss_doc_ids = None
+        bert_model = None
+
+        faiss_path = dataset_dir / "faiss_bert.index"
+        docids_path = dataset_dir / "faiss_doc_ids.joblib"
+        model_name_path = dataset_dir / "bert_model_name.joblib"
+
+        if faiss_path.exists() and docids_path.exists() and model_name_path.exists():
+            try:
+                import faiss
+                from sentence_transformers import SentenceTransformer
+
+                faiss_doc_ids = joblib.load(docids_path)
+                bert_model_name = joblib.load(model_name_path)
+                log.info("  Loading FAISS index and BERT model '%s' …", bert_model_name)
+                faiss_index = faiss.read_index(str(faiss_path))
+                bert_model = SentenceTransformer(bert_model_name)
+                log.info("  FAISS index: %d vectors | dim: %d", faiss_index.ntotal, faiss_index.d)
+            except ImportError:
+                log.warning(
+                    "  faiss-cpu or sentence-transformers not installed — "
+                    "BERT dense search disabled for '%s'.",
+                    dataset_name,
+                )
+
+        bundle = OfflineDatasetBundle(
+            dataset_name=dataset_name,
+            inverted_index=inverted_index,
+            strategies=strategies,
+            ranked_documents=ranked_documents,
+            faiss_index=faiss_index,
+            faiss_doc_ids=faiss_doc_ids,
+            bert_model=bert_model,
+        )
+        register_bundle(bundle)
+        log.info(
+            "  '%s' ready — %d docs | vocab=%d | %.1fs",
+            dataset_name,
+            inverted_index.document_count,
+            len(inverted_index.vocabulary),
+            time.perf_counter() - t0,
+        )
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    """Load offline indexes before accepting requests; clean up on shutdown."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+        datefmt="%H:%M:%S",
+    )
+    log.info("Server starting — loading offline indexes …")
+    _load_offline_bundles()
+    log.info("Offline indexes loaded. Server is ready.")
+    yield
+    log.info("Server shutting down.")
 
 from api.indexing import router as indexing_router
 from api.evaluation import router as evaluation_router
@@ -16,6 +128,7 @@ app = FastAPI(
     title="IR Microservices Gateway",
     version="1.0.0",
     description="Single entrypoint that serves preprocessing, indexing/representation, matching/ranking, evaluation, and query refinement services.",
+    lifespan=lifespan,
 )
 
 app.include_router(indexing_router)

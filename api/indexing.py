@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from core.data_loader import DEFAULT_DOCUMENT_LIMIT
 from core.indexing_service import IndexingService, build_indexing_service
+from core.offline_store import get_bundle
 from schemas.indexing_schema import IndexRequest, IndexResponse, RepresentRequest, RepresentResponse
 
 router = APIRouter(tags=["Indexing"])
@@ -22,6 +23,16 @@ def index_documents(
 ) -> IndexResponse:
     try:
         if dataset_name:
+            from core.offline_store import available_datasets, get_bundle
+            if dataset_name in available_datasets():
+                bundle = get_bundle(dataset_name)
+                return IndexResponse(
+                    document_count=bundle.inverted_index.document_count,
+                    vocabulary_size=len(bundle.inverted_index.vocabulary),
+                    average_document_length=bundle.inverted_index.average_document_length,
+                    active_representation=payload.representation_type,
+                )
+            
             result = service.index_ir_dataset(
                 dataset_name=dataset_name,
                 representation_type=payload.representation_type,
@@ -57,9 +68,32 @@ def index_documents(
 @router.post("/represent", response_model=RepresentResponse)
 def represent_query(
     payload: RepresentRequest,
+    dataset_name: str | None = Query(
+        default=None,
+        description="When provided, use the pre-loaded offline strategies for this dataset.",
+    ),
     service: IndexingService = Depends(get_indexing_service),
 ) -> RepresentResponse:
     try:
+        # ── Offline path: use pre-fitted strategies + index from disk ─────────
+        if dataset_name:
+            bundle = get_bundle(dataset_name)
+            strategy = bundle.strategies.get(payload.representation_type)
+            if strategy is None:
+                raise RuntimeError(
+                    f"Representation strategy '{payload.representation_type}' is not "
+                    f"available for dataset '{dataset_name}'."
+                )
+            from core.inverted_index import normalize_text
+            query_tokens = normalize_text(payload.query)
+            vector = strategy.represent_query(query_tokens, bundle.inverted_index)
+            return RepresentResponse(
+                representation_type=payload.representation_type,
+                query_tokens=query_tokens,
+                vector=vector,
+            )
+
+        # ── Dynamic path: use the in-process IndexingService (legacy) ─────────
         query_tokens, representation_type, vector = service.represent_query(
             query=payload.query,
             representation_type=payload.representation_type,
