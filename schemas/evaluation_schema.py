@@ -36,6 +36,11 @@ class EvaluateRequest(BaseModel):
 class MetricSummary(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
+
+
+class MetricSummary(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     map_score: float = Field(..., alias="MAP")
     recall: float = Field(..., alias="Recall")
     precision_at_10: float = Field(..., alias="Precision@10")
@@ -45,4 +50,5 @@ class MetricSummary(BaseModel):
 class EvaluateResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
+    total_queries_evaluated: int = Field(default=0, alias="Total_Queries_Evaluated")
     metrics_by_model: dict[str, MetricSummary] = Field(..., alias="Metrics_By_Model")

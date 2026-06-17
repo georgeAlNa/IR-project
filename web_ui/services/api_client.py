@@ -161,7 +161,7 @@ def evaluate_models(
         params["max_queries"] = max_queries
     if force_recalculate:
         params["force_recalculate"] = "true"
-    return _request_json("POST", f"{base_url.rstrip('/')}/evaluate", payload, params=params or None, timeout=600)
+    return _request_json("POST", f"{base_url.rstrip('/')}/evaluate", payload, params=params or None, timeout=3600)
 
 
 def _hash_vector(token: str, vector_size: int) -> list[float]:

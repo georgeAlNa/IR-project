@@ -253,26 +253,44 @@ if last_search:
         with st.expander("Ranking Response"):
             st.json(last_search["ranking_result"])
 
+    @st.cache_data(show_spinner=False)
+    def _cached_evaluate_models(base_url, qrels, system_results, cutoff, dataset_name, max_queries, force_recalc):
+        return _safe_request(
+            "Evaluation service",
+            evaluate_models,
+            base_url,
+            qrels,
+            system_results,
+            cutoff,
+            dataset_name,
+            max_queries,
+            force_recalc,
+        )
+
     force_recalculate = st.checkbox("Force Recalculate (Takes time)", value=False)
     
     if last_search.get("ir_dataset_name"):
         if st.button("Run Evaluation Service", key="btn_eval_dataset"):
-            evaluation_result, error = _safe_request(
-                "Evaluation service",
-                evaluate_models,
-                sidebar_state.base_url,
-                [],
-                [],
-                10,
-                last_search["ir_dataset_name"],
-                10,
-                force_recalculate,
-            )
+            with st.spinner("Running full dataset evaluation... This may take a while."):
+                evaluation_result, error = _cached_evaluate_models(
+                    sidebar_state.base_url,
+                    [],
+                    [],
+                    10,
+                    last_search["ir_dataset_name"],
+                    None,  # Pass None instead of 10 to evaluate full dataset
+                    force_recalculate,
+                )
             if error:
                 st.error(error)
                 st.stop()
 
             st.subheader("Evaluation Metrics")
+            
+            total_eval = evaluation_result.get("Total_Queries_Evaluated", 0)
+            if total_eval > 0:
+                st.success(f"✅ تم حساب التقييم باستخدام جميع الاستعلامات المتوفرة في ملف qrels. العدد الكلي للاستعلامات المطابقة: {total_eval}")
+
             st.json(evaluation_result)
             
             metrics_data = evaluation_result.get("Metrics_By_Model", {})
@@ -317,19 +335,26 @@ if last_search:
             model_runs[model_name] = model_result.get("Ranked_Document_Ids", [])
 
         qrels_payload, system_results_payload = build_evaluation_payload(dataset.query_id, dataset.qrels, model_runs)
-        evaluation_result, error = _safe_request(
-            "Evaluation service",
-            evaluate_models,
-            sidebar_state.base_url,
-            qrels_payload,
-            system_results_payload,
-            10,
-        )
+        with st.spinner("Running evaluation..."):
+            evaluation_result, error = _cached_evaluate_models(
+                sidebar_state.base_url,
+                qrels_payload,
+                system_results_payload,
+                10,
+                None,
+                None,
+                False
+            )
         if error:
             st.error(error)
             st.stop()
 
         st.subheader("Evaluation Metrics")
+        
+        total_eval = evaluation_result.get("Total_Queries_Evaluated", 0)
+        if total_eval > 0:
+            st.success(f"✅ تم حساب التقييم باستخدام جميع الاستعلامات المتوفرة في ملف qrels. العدد الكلي للاستعلامات المطابقة: {total_eval}")
+
         st.json(evaluation_result)
         
         metrics_data = evaluation_result.get("Metrics_By_Model", {})

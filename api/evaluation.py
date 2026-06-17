@@ -67,7 +67,9 @@ def evaluate_models(
                 for qrel in qrels:
                     if any(str(rel_doc.document_id) in valid_doc_ids for rel_doc in qrel.relevant_documents):
                         filtered_qrels.append(qrel)
-                qrels = filtered_qrels[:max_queries] if max_queries else filtered_qrels
+                
+                # FORCE full evaluation on dataset: Do NOT slice qrels by max_queries
+                qrels = filtered_qrels
 
                 for qrel in qrels:
                     query_text = query_lookup.get(qrel.query_id)
@@ -113,7 +115,10 @@ def evaluate_models(
                 cutoff=payload.cutoff,
             )
         )
-        response = EvaluateResponse(metrics_by_model=result.metrics_by_model)
+        response = EvaluateResponse(
+            total_queries_evaluated=len(qrels) if qrels else 0,
+            metrics_by_model=result.metrics_by_model
+        )
         
         if cache_file:
             cache_file.parent.mkdir(parents=True, exist_ok=True)
