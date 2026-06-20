@@ -18,7 +18,7 @@ INDEX_DIR = Path(__file__).resolve().parent / "offline_indexes"
 
 def _safe_dataset_name(key: str) -> str:
     """Convert directory key back to dataset name, e.g. 'beir_quora' → 'beir/quora'."""
-    known = {"msmarco-passage": "msmarco-passage", "beir_quora": "beir/quora"}
+    known = {"beir_quora_test": "beir/quora/test"}
     return known.get(key, key)
 
 

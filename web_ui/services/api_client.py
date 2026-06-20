@@ -32,13 +32,13 @@ class DatasetDefinition:
 
 def get_dataset_catalog() -> dict[str, DatasetDefinition]:
     return {
-        "MS MARCO Passage": DatasetDefinition(
-            name="MS MARCO Passage",
+        "Quora Test": DatasetDefinition(
+            name="Quora Test",
             query_id="",
             benchmark_query="what is information retrieval",
             documents=(),
             qrels={},
-            ir_dataset_name="msmarco-passage",
+            ir_dataset_name="beir/quora/test",
         ),
     }
 

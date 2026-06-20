@@ -10,8 +10,8 @@ import ir_datasets
 from schemas.evaluation_schema import QrelDocument, QrelQuery
 
 
-DEFAULT_DOCUMENT_LIMIT = 250_000
-SUPPORTED_DATASETS = ("msmarco-passage", "beir/quora")
+DEFAULT_DOCUMENT_LIMIT = None
+SUPPORTED_DATASETS = ("beir/quora/test",)
 
 
 @dataclass(frozen=True)
@@ -27,13 +27,9 @@ class LoadedDocument:
 
 
 DATASET_CONFIGS = {
-    "msmarco-passage": DatasetConfig(
-        docs_dataset_name="msmarco-passage",
-        evaluation_dataset_name="msmarco-passage/dev/small",
-    ),
-    "beir/quora": DatasetConfig(
-        docs_dataset_name="beir/quora",
-        evaluation_dataset_name="beir/quora",
+    "beir/quora/test": DatasetConfig(
+        docs_dataset_name="beir/quora/test",
+        evaluation_dataset_name="beir/quora/test",
     ),
 }
 
@@ -115,11 +111,11 @@ def _extract_document_text(document: object) -> str:
     return " ".join(chunks)
 
 
-def load_documents(dataset_name: str, limit: int = DEFAULT_DOCUMENT_LIMIT) -> list[LoadedDocument]:
+def load_documents(dataset_name: str, limit: int | None = DEFAULT_DOCUMENT_LIMIT) -> list[LoadedDocument]:
     _patch_ir_datasets_tsv_encoding()
 
     config = _dataset_config(dataset_name)
-    if limit <= 0:
+    if limit is not None and limit <= 0:
         raise ValueError("Document limit must be greater than 0.")
 
     dataset = ir_datasets.load(config.docs_dataset_name)

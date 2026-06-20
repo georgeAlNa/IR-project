@@ -14,8 +14,7 @@ What it does:
      and stores the resulting dense vectors in a FAISS flat index on disk.
 
 Usage:
-    python scripts/build_offline_indexes.py --dataset msmarco-passage --max-docs 150000
-    python scripts/build_offline_indexes.py --dataset beir/quora --max-docs 50000
+    python scripts/build_offline_indexes.py --dataset beir/quora/test
 """
 
 from __future__ import annotations
@@ -266,9 +265,9 @@ def main() -> None:
     )
     parser.add_argument(
         "--dataset",
-        default="msmarco-passage",
-        choices=["msmarco-passage", "beir/quora"],
-        help="Dataset to index (default: msmarco-passage)",
+        default="beir/quora/test",
+        choices=["beir/quora/test"],
+        help="Dataset to index (default: beir/quora/test)",
     )
     parser.add_argument(
         "--max-docs",

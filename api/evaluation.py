@@ -68,7 +68,7 @@ def evaluate_models(
                     if any(str(rel_doc.document_id) in valid_doc_ids for rel_doc in qrel.relevant_documents):
                         filtered_qrels.append(qrel)
                 
-                # FORCE full evaluation on dataset: Do NOT slice qrels by max_queries
+                # Evaluate on ALL queries for comprehensive evaluation
                 qrels = filtered_qrels
 
                 for qrel in qrels:
