@@ -22,7 +22,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from core.matching_ranking_service import MatchingRankingService, build_matching_ranking_service
-from core.offline_store import get_bundle
+from core.offline_store import fetch_raw_texts, get_bundle
 from core.state import get_indexed_documents
 from schemas.matching_ranking_schema import (
     RankedDocument,
@@ -100,7 +100,20 @@ def search_documents(
             bundle = get_bundle(payload.dataset_name)
             ranked_ids = _bert_faiss_search(query_text, bundle, top_k=payload.top_k)
             doc_lookup = {doc.document_id: doc for doc in bundle.ranked_documents}
-            ranked_documents = [doc_lookup[did] for did in ranked_ids if did in doc_lookup]
+            
+            ranked_documents = []
+            for did in ranked_ids:
+                if did in doc_lookup:
+                    doc_copy = doc_lookup[did].model_copy()
+                    ranked_documents.append(doc_copy)
+                    
+            if payload.dataset_name and ranked_documents:
+                doc_ids_to_fetch = [doc.document_id for doc in ranked_documents]
+                raw_texts = fetch_raw_texts(payload.dataset_name, doc_ids_to_fetch)
+                for doc in ranked_documents:
+                    if doc.document_id in raw_texts:
+                        doc.original_text = raw_texts[doc.document_id]
+
             return SearchResponse(
                 ranked_document_ids=ranked_ids,
                 ranked_documents=ranked_documents,
@@ -131,11 +144,19 @@ def search_documents(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     document_lookup = {doc.document_id: doc for doc in dataset}
-    ranked_documents = [
-        document_lookup[did]
-        for did in result.ranked_document_ids
-        if did in document_lookup
-    ]
+    
+    ranked_documents = []
+    for did in result.ranked_document_ids:
+        if did in document_lookup:
+            doc_copy = document_lookup[did].model_copy()
+            ranked_documents.append(doc_copy)
+
+    if payload.dataset_name and ranked_documents:
+        doc_ids_to_fetch = [doc.document_id for doc in ranked_documents]
+        raw_texts = fetch_raw_texts(payload.dataset_name, doc_ids_to_fetch)
+        for doc in ranked_documents:
+            if doc.document_id in raw_texts:
+                doc.original_text = raw_texts[doc.document_id]
 
     return SearchResponse(
         ranked_document_ids=result.ranked_document_ids,

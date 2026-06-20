@@ -9,6 +9,7 @@ every request handler without any re-loading cost.
 
 from __future__ import annotations
 
+import sqlite3
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -62,3 +63,23 @@ def get_bundle(dataset_name: str) -> OfflineDatasetBundle:
 def available_datasets() -> list[str]:
     with _LOCK:
         return list(_BUNDLES.keys())
+
+
+def fetch_raw_texts(dataset_name: str, doc_ids: list[str]) -> dict[str, str]:
+    if not doc_ids:
+        return {}
+        
+    dataset_key = dataset_name.replace("/", "_")
+    db_path = Path(__file__).resolve().parent.parent / "offline_indexes" / dataset_key / "documents.db"
+    
+    if not db_path.exists():
+        return {}
+        
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    placeholders = ",".join("?" for _ in doc_ids)
+    cursor.execute(f"SELECT doc_id, raw_text FROM docs WHERE doc_id IN ({placeholders})", doc_ids)
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return {row[0]: row[1] for row in rows}

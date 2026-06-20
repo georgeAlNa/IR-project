@@ -124,6 +124,24 @@ def build_traditional_index(
         service._documents, inverted_index, k1, b
     )
 
+    # 4.5 Persist raw text to SQLite and clear it from memory
+    import sqlite3
+    db_path = out_dir / "documents.db"
+    log.info("Saving raw texts to SQLite database at %s …", db_path)
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS docs (doc_id TEXT PRIMARY KEY, raw_text TEXT)")
+    
+    for doc in ranked_documents:
+        cursor.execute(
+            "INSERT OR REPLACE INTO docs (doc_id, raw_text) VALUES (?, ?)",
+            (doc.document_id, doc.original_text)
+        )
+        doc.original_text = None  # Clear to save space in joblib
+        
+    conn.commit()
+    conn.close()
+
     # 5. Persist with joblib
     log.info("Saving artifacts to %s …", out_dir)
     joblib.dump(inverted_index, out_dir / "inverted_index.joblib")
@@ -184,9 +202,24 @@ def build_bert_faiss_index(
 
     # Build parallel lists for encoding
     doc_ids: list[str] = [doc.document_id for doc in ranked_documents]
-    texts: list[str] = [
-        doc.original_text or doc.processed_text or "" for doc in ranked_documents
-    ]
+
+    # Load texts from SQLite since they were cleared from joblib
+    import sqlite3
+    db_path = out_dir / "documents.db"
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    texts: list[str] = []
+    doc_lookup = {d.document_id: d for d in ranked_documents}
+    for doc_id in doc_ids:
+        cursor.execute("SELECT raw_text FROM docs WHERE doc_id = ?", (doc_id,))
+        row = cursor.fetchone()
+        raw_text = row[0] if row and row[0] else ""
+        if not raw_text:
+            d = doc_lookup.get(doc_id)
+            raw_text = d.processed_text if d and d.processed_text else ""
+        texts.append(raw_text)
+    conn.close()
 
     # Load BERT model
     log.info("Loading SentenceTransformer model '%s' …", model_name)
