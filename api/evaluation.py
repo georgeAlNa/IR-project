@@ -68,10 +68,17 @@ def evaluate_models(
                     if any(str(rel_doc.document_id) in valid_doc_ids for rel_doc in qrel.relevant_documents):
                         filtered_qrels.append(qrel)
                 
+                if max_queries is not None:
+                    filtered_qrels = filtered_qrels[:max_queries]
+                
                 # Evaluate on ALL queries for comprehensive evaluation
                 qrels = filtered_qrels
+                total_queries = len(qrels)
+                print(f"Starting evaluation of {total_queries} queries...", flush=True)
 
-                for qrel in qrels:
+                for index, qrel in enumerate(qrels, start=1):
+                    if index % 50 == 0:
+                        print(f"Evaluation Progress: {index} / {total_queries} queries completed.", flush=True)
                     query_text = query_lookup.get(qrel.query_id)
                     if not query_text:
                         continue

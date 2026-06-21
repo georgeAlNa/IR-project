@@ -13,6 +13,9 @@ except ImportError as exc:  # pragma: no cover - dependency import error
     ) from exc
 
 
+import threading
+_WN_LOCK = threading.Lock()
+
 _TOKEN_PATTERN = re.compile(r"\b\w+\b", re.UNICODE)
 
 
@@ -44,18 +47,19 @@ class QueryRefinementService:
         expanded_terms: list[str] = []
         seen_terms: set[str] = set()
 
-        for token in tokens:
-            try:
-                synsets = wn.synsets(token)
-            except LookupError:
-                synsets = []
+        with _WN_LOCK:
+            for token in tokens:
+                try:
+                    synsets = wn.synsets(token)
+                except LookupError:
+                    synsets = []
 
-            for synset in synsets:
-                for lemma in synset.lemmas():
-                    synonym = lemma.name().replace("_", " ").lower()
-                    if synonym != token and synonym not in seen_terms:
-                        seen_terms.add(synonym)
-                        expanded_terms.append(synonym)
+                for synset in synsets:
+                    for lemma in synset.lemmas():
+                        synonym = lemma.name().replace("_", " ").lower()
+                        if synonym != token and synonym not in seen_terms:
+                            seen_terms.add(synonym)
+                            expanded_terms.append(synonym)
 
         return expanded_terms
 
